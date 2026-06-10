@@ -32,7 +32,7 @@ JD 里反复提到的 "Orchestrator（协同者）"模式。
 
 ### 🧩 为什么能直接对接这个 JD？
 
-| JD 要求 | 本项目对应实现 |
+|  要求 | 本项目对应实现 |
 |---|---|
 | Python + LangChain/LangGraph | `src/border_pilot/orchestrator.py`（LangGraph 状态机） |
 | 多 Agent / Agentic Workflow | `src/border_pilot/agents/`（4 个独立 Agent） |
