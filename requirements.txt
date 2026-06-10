@@ -1,0 +1,17 @@
+# Core agent framework
+langgraph>=0.2.0
+langchain-core>=0.3.0
+
+# LLM providers (at least one required for live mode; mock works without)
+anthropic>=0.40.0
+huggingface-hub>=0.20.0
+
+# Web UI
+gradio>=4.0.0
+
+# Utilities
+pydantic>=2.0
+python-dotenv>=1.0.0
+
+# Dev / test
+pytest>=8.0.0
