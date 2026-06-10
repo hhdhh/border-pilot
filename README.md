@@ -7,7 +7,7 @@
 [![Python3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)]()
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)]()
 [![Built with LangGraph](https://img.shields.io/badge/orchestration-LangGraph-orange.svg)]()
-[![Live demo (HF Spaces)](#-live-demo)](https://huggingface.co/spaces/your-username/border-pilot)
+[![Live demo (HF Spaces)](#-live-demo)](https://github.com/hhdhh/border-pilot)
 
 ---
 
@@ -42,7 +42,7 @@ a real model at runtime — no code changes required.
 Run locally:
 
 ```bash
-git clone https://github.com/your-username/border-pilot
+git clone https://github.com/hhdhh/border-pilot
 cd border-pilot
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
