@@ -1,208 +1,86 @@
-# 🛰️ BorderPilot · 跨境电商 AI Agent 工作流平台
+# BorderPilot
 
-> **多 Agent 工作流 for 跨境出海** — TrendScout → MarketAnalyst → ListingCraft → QualityCheck，
-> 用 [LangGraph](https://langchain-ai.github.io/langgraph/) 编排。
+A four-stage commerce workflow built with Python and LangGraph. Explore candidate discovery, market analysis, listing drafts, and rule-based quality checks without an API key.
 
-> **Multi-agent workflow platform for cross-border e-commerce** —
-> TrendScout → MarketAnalyst → ListingCraft → QualityCheck,
-> orchestrated with [LangGraph](https://langchain-ai.github.io/langgraph/).
+**项目状态：工作流演示原型。** 默认演示应显式使用 `BORDER_PILOT_LLM=mock`。Mock 输出是示例数据，不是真实市场调研、翻译质量或合规结论。
 
-[![Python3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)]()
-[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)]()
-[![Built with LangGraph](https://img.shields.io/badge/orchestration-LangGraph-orange.svg)]()
-[![Live demo (HF Spaces)](#-live-demo)](https://github.com/hhdhh/border-pilot)
+[Architecture](docs/architecture.md) · [CLI source](src/border_pilot/cli.py) · [Tests](tests/test_smoke.py)
 
----
+## Workflow / 工作流
 
-## 🇨🇳 中文说明
+```mermaid
+flowchart LR
+    A[TrendScout] --> B[MarketAnalyst]
+    B -->|no-go| E[End]
+    B -->|other decisions| C[ListingCraft]
+    C --> D[QualityCheck]
+    D --> E
+```
 
-### ✨ 这是什么？
+- **TrendScout:** surfaces candidates from the demo catalogue and provider output.
+- **MarketAnalyst:** produces an analysis state; `no-go` ends the graph early.
+- **ListingCraft:** builds drafts for the selected marketplace variants.
+- **QualityCheck:** checks title length, bullet count, and banned terms, with an LLM review hook.
 
-BorderPilot 是一个**端到端的跨境电商 AI Agent 协作平台**，展示了一组专业化
-LLM Agent 如何跑通整个出海业务链条：
+目前 `watch` 会继续进入 Listing 生成，而不是结束流程。规则检查不能替代平台审核或法律审查。
 
-1. **TrendScout（趋势侦察）** —— 根据种子词（如 "wireless earbuds"）挖出候选爆品。
-2. **MarketAnalyst（市场分析）** —— 对头部候选做 go/no-go 判断（市场规模、竞品、风险）。
-3. **ListingCraft（多语言 Listing）** —— 针对 Amazon / eBay / Shopify 等多平台、多语言
- （en / en-GB / de / ja）批量生成合规 Listing。
-4. **QualityCheck（合规校验）** —— 跑规则（标题长度、bullet 数量、违禁词）+ LLM 兜底审校。
+## Run the mock workflow
 
-Orchestrator 用 **LangGraph** 状态机编排，分析师返回 `no-go` 时自动短路退出 —— 这就是
-JD 里反复提到的 "Orchestrator（协同者）"模式。
-
-### 🧩 为什么能直接对接这个 JD？
-
-|  要求 | 本项目对应实现 |
-|---|---|
-| Python + LangChain/LangGraph | `src/border_pilot/orchestrator.py`（LangGraph 状态机） |
-| 多 Agent / Agentic Workflow | `src/border_pilot/agents/`（4 个独立 Agent） |
-| Tool-using Agent | 每个 Agent 都用工具：目录检索、JSON 约束 LLM 输出、规则引擎 |
-| 跨境出海/ERP/CRM | ListingCraft 输出多市场多语言 Listing，覆盖 Amazon/eBay/Shopify |
-| 部署 + GitHub 链接 | 已部署 Gradio Demo，可对接 HF Spaces |
-| 折腾欲 + 调优 | 每个 Agent 独立 system prompt + 温度，便于分节点调优 |
-| 真实业务场景 | "选品 → 分析 → Listing → 合规"端到端跑通 |
-
-### 🚀 一分钟跑起来
+Use Python 3.10 or later for this setup; the current CLI uses modern union annotations.
 
 ```bash
-git clone https://github.com/hhdhh/border-pilot
+git clone https://github.com/hhdhh/border-pilot.git
 cd border-pilot
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-python app.py # 浏览器打开 http://127.0.0.1:7860
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+export BORDER_PILOT_LLM=mock
+PYTHONPATH=src python -m border_pilot.cli demo
 ```
 
-无需任何 API Key —— 默认走 mock LLM，全流程在本地 / Space 上都能跑。
-设置 `ANTHROPIC_API_KEY` 后切到 Claude；设置 `HF_TOKEN` 切到 HuggingFace 免费模型。
-
-### 📊 测试
+Choose marketplaces and request JSON output:
 
 ```bash
-PYTHONPATH=src pytest -q
+PYTHONPATH=src python -m border_pilot.cli run   --query "wireless earbuds"   --markets amazon_us,amazon_de   --json
 ```
 
-**5/5 测试通过**，包含完整工作流 + 合规规则 + CLI。
-
----
-
-## 🇬🇧 English
-
-### ✨ What is BorderPilot?
-
-A recruiting-grade demo of how a team of specialised LLM agents can run an
-**end-to-end cross-border e-commerce workflow**:
-
-1. **TrendScout** surfaces candidate products from a seed query.
-2. **MarketAnalyst** turns the top candidate into a go/no-go brief
-   (TAM estimate, sweet spot, competitors, risk flags).
-3. **ListingCraft** writes marketplace-ready listings in multiple
-   locales (Amazon US/UK/DE/JP, eBay, Shopify, ...).
-4. **QualityCheck** runs rule-based + LLM-assisted compliance checks
-   and emits an approval decision.
-
-The orchestrator is a LangGraph state machine with **conditional edges**:
-when the analyst returns `no-go`, the pipeline short-circuits to `END`.
-
-The full workflow runs **with the mock LLM and zero API keys**, so it
-boots cleanly on HuggingFace Spaces and in CI. Set
-`ANTHROPIC_API_KEY` (Claude) or `HF_TOKEN` (Mistral / Llama) to swap in
-a real model at runtime — no code changes required.
-
-### 🧩 How it maps to the JD
-
-If you came here from the **跨境出海 AI Agent工程师** posting, here is the
-explicit trace from this repo to the role:
-
-| Requirement | Where in this repo |
-|---|---|
-| Python + LangChain/LangGraph | `src/border_pilot/orchestrator.py` |
-| Multi-agent / Agentic Workflow | `src/border_pilot/agents/*` |
-| Tool-using agents | `src/border_pilot/tools/*`, `_parse_json_array` in trend_scout |
-| RAG / prompt engineering hooks | `MockLLM` prompts per agent (each agent has its own system prompt + temperature) |
-| Cross-border domain | ListingCraft writes per-marketplace drafts in en / en-GB / de / ja with marketplace caps |
-| Shipping a live demo | `app.py` -> HuggingFace Space |
-| Open-source hygiene | pyproject.toml, tests, CLI, docs, MIT license |
-
-### 🚀 Quickstart
+To launch the local Gradio interface:
 
 ```bash
-git clone https://github.com/hhdhh/border-pilot
-cd border-pilot
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-python app.py # opens Gradio UI on http://127.0.0.1:7860
+python app.py
 ```
 
-Or run headless:
+No hosted demo is claimed here. See [deployment notes](deploy/huggingface/README.md) before deploying your own instance.
+
+## Model providers
+
+| Configuration | Behavior |
+| --- | --- |
+| `BORDER_PILOT_LLM=mock` | Uses canned model responses; no model credentials needed |
+| `BORDER_PILOT_LLM=anthropic` | Requires `ANTHROPIC_API_KEY` and an available configured model |
+| `BORDER_PILOT_LLM=huggingface` | Requires the relevant Hugging Face access and model availability |
+
+Without an explicit provider, existing provider credentials can change the selected backend. Set mock mode explicitly for tests and offline demonstrations. Never commit credentials.
+
+## Tests
 
 ```bash
-PYTHONPATH=src BORDER_PILOT_LLM=mock python -m border_pilot.cli demo
+BORDER_PILOT_LLM=mock PYTHONPATH=src python -m pytest -q
 ```
 
-### 🏗️ Architecture
+The suite exercises graph construction, the mock workflow, compliance rules, and CLI output. Passing it does not validate real provider connectivity or business accuracy.
 
-```
- ┌─────────────┐ ranked trends ┌────────────────┐ decision=go ┌──────────────┐
- │ TrendScout │ ─────────────► │ MarketAnalyst │ ───────────► │ ListingCraft │
- └─────────────┘ └────────────────┘ watch / no-go ──► END └──────────────┘
- │
- ▼ per-locale drafts
- ┌──────────────┐
- │ QualityCheck │ ──► END (overall_score + recommendation)
- └──────────────┘
-```
+## Known limitations
 
-* **LangGraph** wires the nodes; conditional edges branch on analyst decision.
-* **Typed state** (`BorderPilotState`) keeps the contract explicit.
-* **Tool-using agents**: catalogue retrieval, JSON-constrained LLM output,
- deterministic compliance rules (title length, bullet count, banned words).
-* **Pluggable LLM**: `make_llm()` selects `anthropic` / `huggingface` / `mock`
- from env vars. The mock keeps the demo fully offline.
+- Mock content includes canned market figures and illustrative language variants; do not publish them as researched facts.
+- A completed graph can contain fallback analysis. Inspect `market_analysis.rationale`, not only the final step.
+- Provider defaults and model IDs require checking before a live deployment.
+- The repository does not include a GitHub Actions workflow at this revision.
 
-Full design notes live in [`docs/architecture.md`](docs/architecture.md).
+## Code map
 
-### 🧪 Tests
+`orchestrator.py` wires the graph; `state.py` defines shared state; `agents/` implements the stages; `tools/` contains catalogue and model helpers. These modules live under `src/border_pilot/`.
 
-```bash
-PYTHONPATH=src pytest -q
-```
+## License
 
-`tests/test_smoke.py` exercises the full graph with the mock LLM, plus
-focused tests for `quality_check` (banned words, length rules) and the CLI.
-
----
-
-## 🗂️ Project layout / 项目结构
-
-```
-border-pilot/
-├── app.py # Gradio entrypoint (used by HF Spaces)
-├── pyproject.toml
-├── requirements.txt
-├── src/
-│ └── border_pilot/
-│ ├── state.py # TypedDict state schema
-│ ├── orchestrator.py # LangGraph wiring + run() helper
-│ ├── cli.py # python -m border_pilot.cli
-│ ├── agents/
-│ │ ├── trend_scout.py
-│ │ ├── market_analyst.py
-│ │ ├── listing_craft.py
-│ │ └── quality_check.py
-│ └── tools/
-│ ├── llm.py # Anthropic + HF + Mock providers
-│ └── data.py # Trend catalogue / live-search hook
-├── tests/
-│ └── test_smoke.py
-├── examples/
-│ └── demo_run.py
-├── docs/
-│ └── architecture.md
-└── deploy/
- └── huggingface/
- └── README.md
-```
-
----
-
-## 🔐 Environment variables
-
-| Var | Effect |
-|---|---|
-| `BORDER_PILOT_LLM=mock` (default) | Use the deterministic mock provider |
-| `BORDER_PILOT_LLM=anthropic` + `ANTHROPIC_API_KEY` | Use Claude (`claude-3-5-sonnet-latest`) |
-| `BORDER_PILOT_LLM=huggingface` + `HF_TOKEN` | Use HF Inference API (`Mistral-7B-Instruct-v0.3`) |
-| `BORDER_PILOT_LIVE_SEARCH=1` | TrendScout will try a live search before falling back to catalogue |
-
----
-
-## 📦 License
-
-MIT — see [`LICENSE`](LICENSE).
-
----
-
-> Built end-to-end in one session with an AI-native workflow:
-> Cursor + Claude + this agent harness. PRs welcome.
->
-> 一个会话内全栈搭出来：Cursor + Claude + 这个 Agent 脚手架。欢迎提 PR。
+[MIT](LICENSE).
